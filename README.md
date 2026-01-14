@@ -74,7 +74,6 @@ python src/analysis_engine.py
 streamlit run app.py
 ```
 
-The dashboard will open at `http://localhost:8501`
 
 ---
 
