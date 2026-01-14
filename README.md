@@ -22,8 +22,9 @@ Summit Analytics is a comprehensive website traffic analysis solution that trans
 
 Metric-driven, interactive dashboard for analyzing website traffic, visitor behavior, and conversion drivers. 
 
-![Summit Analytics Dashboard](docs/images/streamlit_dashboard_view_1768374328984.png)
+![Summit Analytics Dashboard](docs/images/dashboard_traffic_sources_1768375337065.png)
 
+## 🚀 Features
 ---
 
 ## 🛠️ Tech Stack
