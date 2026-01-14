@@ -20,6 +20,10 @@ Summit Analytics is a comprehensive website traffic analysis solution that trans
 - ✅ **Data Visualization** - Interactive dashboards, KPI tracking
 - ✅ **Strategic Insights** - Business recommendations, segmentation strategies
 
+Metric-driven, interactive dashboard for analyzing website traffic, visitor behavior, and conversion drivers. 
+
+![Summit Analytics Dashboard](docs/images/streamlit_dashboard_view_1768374328984.png)
+
 ---
 
 ## 🛠️ Tech Stack
@@ -147,7 +151,7 @@ pytest tests/ --cov=src --cov-report=html
 
 ## 📝 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License 
 
 ---
 

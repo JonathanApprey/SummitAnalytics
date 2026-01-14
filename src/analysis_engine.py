@@ -19,6 +19,8 @@ from pathlib import Path
 from typing import Tuple, Dict, List
 import logging
 from dataclasses import dataclass
+from src.predictive_model import ConversionPredictor
+import joblib
 
 # Configure logging
 logging.basicConfig(
@@ -367,6 +369,12 @@ def run_full_analysis() -> Dict:
     # Traffic source analysis
     source_analysis = get_traffic_source_analysis(df)
     
+    # Train Predictive Model
+    logger.info("Training predictive model...")
+    predictor = ConversionPredictor()
+    model_metrics = predictor.train(df)
+    logger.info(f"Model trained. Accuracy: {model_metrics['accuracy']:.2f}, AUC: {model_metrics['roc_auc']:.2f}")
+    
     # Compile results
     results = {
         'data': df,
@@ -374,6 +382,8 @@ def run_full_analysis() -> Dict:
         'source_analysis': source_analysis,
         'kmeans_model': kmeans_model,
         'scaler': scaler,
+        'predictor': predictor,
+        'model_metrics': model_metrics,
         'summary': {
             'total_sessions': len(df),
             'total_conversions': df['is_converted'].sum(),
@@ -402,6 +412,10 @@ def save_results_to_db(results: Dict) -> None:
     # Save source analysis
     source_df = results['source_analysis'].reset_index()
     source_df.to_sql('source_analysis', conn, if_exists='replace', index=False)
+    
+    # Save predictive model
+    model_path = get_project_root() / "data" / "conversion_model.joblib"
+    results['predictor'].save_model(model_path)
     
     conn.close()
     logger.info("Analysis results saved to database")

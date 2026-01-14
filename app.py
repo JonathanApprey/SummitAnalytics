@@ -16,10 +16,11 @@ import sqlite3
 from pathlib import Path
 import sys
 
-# Add src to path for imports
-sys.path.insert(0, str(Path(__file__).parent / "src"))
-
+# Adding src to path for imports
 from src.analysis_engine import run_full_analysis, load_data_from_db
+from src.alerts import KPIAlertSystem
+from src.ab_testing import ABTestAnalyzer
+from src.predictive_model import ConversionPredictor
 
 # Page configuration
 st.set_page_config(
@@ -274,7 +275,23 @@ def load_analyzed_data():
         return None, None
     
     conn.close()
+    conn.close()
     return df, source_df
+
+@st.cache_resource(ttl=300)
+def load_predictive_model():
+    """Load the trained predictive model."""
+    model_path = get_db_path().parent / "conversion_model.joblib"
+    if not model_path.exists():
+        return None
+        
+    predictor = ConversionPredictor()
+    try:
+        predictor.load_model(model_path)
+        return predictor
+    except Exception as e:
+        st.error(f"Error loading model: {e}")
+        return None
 
 
 def render_header():
@@ -378,7 +395,7 @@ def render_traffic_source_analysis(df: pd.DataFrame, source_df: pd.DataFrame):
             textfont=dict(size=14, color='white'),
             textinfo='percent+label'
         )
-        st.plotly_chart(fig_pie, use_container_width=True)
+        st.plotly_chart(fig_pie, use_container_width=True, key='traffic_pie')
     
     with col2:
         # Bar chart of conversion rates by source
@@ -412,7 +429,7 @@ def render_traffic_source_analysis(df: pd.DataFrame, source_df: pd.DataFrame):
                 tickfont=dict(size=12, color='white')
             )
         )
-        st.plotly_chart(fig_bar, use_container_width=True)
+        st.plotly_chart(fig_bar, use_container_width=True, key='traffic_bar')
     
     # Effectiveness ranking table
     st.markdown("#### 🏆 Source Effectiveness Ranking")
@@ -471,7 +488,7 @@ def render_segment_analysis(df: pd.DataFrame):
                 tickfont=dict(size=12, color='white')
             )
         )
-        st.plotly_chart(fig_scatter, use_container_width=True)
+        st.plotly_chart(fig_scatter, use_container_width=True, key='segment_scatter')
     
     with col2:
         # Segment distribution
@@ -504,7 +521,7 @@ def render_segment_analysis(df: pd.DataFrame):
                 tickfont=dict(size=12, color='white')
             )
         )
-        st.plotly_chart(fig_seg, use_container_width=True)
+        st.plotly_chart(fig_seg, use_container_width=True, key='segment_dist_bar')
     
     # Segment profiles
     st.markdown("#### 📋 Segment Profiles")
@@ -565,7 +582,7 @@ def render_efm_analysis(df: pd.DataFrame):
                 gridcolor='rgba(255,255,255,0.1)'
             )
         )
-        st.plotly_chart(fig_e, use_container_width=True)
+        st.plotly_chart(fig_e, use_container_width=True, key='efm_e_hist')
     
     with col2:
         fig_f = px.histogram(
@@ -589,7 +606,7 @@ def render_efm_analysis(df: pd.DataFrame):
                 gridcolor='rgba(255,255,255,0.1)'
             )
         )
-        st.plotly_chart(fig_f, use_container_width=True)
+        st.plotly_chart(fig_f, use_container_width=True, key='efm_f_hist')
     
     with col3:
         fig_m = px.histogram(
@@ -613,7 +630,7 @@ def render_efm_analysis(df: pd.DataFrame):
                 gridcolor='rgba(255,255,255,0.1)'
             )
         )
-        st.plotly_chart(fig_m, use_container_width=True)
+        st.plotly_chart(fig_m, use_container_width=True, key='efm_m_hist')
     
     # EFM heatmap
     efm_pivot = df.groupby(['E_Score', 'M_Score']).size().unstack(fill_value=0)
@@ -641,7 +658,7 @@ def render_efm_analysis(df: pd.DataFrame):
             tickfont=dict(size=12, color='white')
         )
     )
-    st.plotly_chart(fig_heatmap, use_container_width=True)
+    st.plotly_chart(fig_heatmap, use_container_width=True, key='efm_heatmap')
 
 
 def render_insights(df: pd.DataFrame, source_df: pd.DataFrame):
@@ -728,7 +745,7 @@ def render_sidebar():
         
         st.markdown("### 📋 About This Project")
         st.markdown("""
-        **Summit Analytics** is a portfolio project demonstrating:
+        **Summit Analytics** is a project demonstrating:
         
         ✅ **Data Management** - SQL schema design, ETL  
         ✅ **Analysis** - Statistical techniques, clustering  
@@ -749,9 +766,6 @@ def render_sidebar():
         """)
         
         st.markdown("---")
-        
-        st.markdown("### 📧 Contact")
-        st.markdown("Built for Entry-Level Data Analyst role @ Camping World")
 
 
 def main():
@@ -762,10 +776,30 @@ def main():
     # Render header
     render_header()
     
+    # Render Alerts
     st.markdown("---")
     
     # Load data
     df, source_df = load_analyzed_data()
+    
+    if df is not None:
+        alert_system = KPIAlertSystem()
+        metrics = {
+            'conversion_rate': df['conversion_rate'].mean(),
+            'bounce_rate': df['bounce_rate'].mean(),
+            'avg_session_duration': df['session_duration'].mean() / 60  # Convert to mins if needed, assuming seconds
+        }
+        alerts = alert_system.check_alerts(metrics)
+        
+        if alerts:
+            st.markdown("### ⚠️ Active Alerts")
+            for alert in alerts:
+                color = "red" if alert.severity == "critical" else "orange"
+                st.markdown(f"""
+                <div style="padding: 10px; border-radius: 5px; background-color: rgba(255, 0, 0, 0.1); border-left: 5px solid {color}; margin-bottom: 10px;">
+                    <strong style="color: {color}">{alert.severity.upper()}:</strong> {alert.message} (Value: {alert.value:.2f})
+                </div>
+                """, unsafe_allow_html=True)
     
     if df is None:
         st.error("⚠️ No analyzed data found. Please run the analysis pipeline first:")
@@ -787,11 +821,13 @@ streamlit run app.py
     st.markdown("---")
     
     # Create tabs for different analysis views
-    tab1, tab2, tab3, tab4 = st.tabs([
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
         "📡 Traffic Sources", 
         "👥 Visitor Segments", 
         "🎯 EFM Analysis",
-        "💡 Strategic Insights"
+        "💡 Strategic Insights",
+        "🧪 Experimentation",
+        "🔮 Predictive Analytics"
     ])
     
     with tab1:
@@ -799,19 +835,138 @@ streamlit run app.py
     
     with tab2:
         render_segment_analysis(df)
-    
     with tab3:
         render_efm_analysis(df)
-    
+        
     with tab4:
         render_insights(df, source_df)
+        
+    with tab5:
+        st.markdown("### 🧪 A/B Testing Simulator")
+        st.info("Run simulations to test statistical significance of potential changes.")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            st.markdown("#### Configure Experiment")
+            base_rate = st.slider("Baseline Conversion Rate (%)", 1.0, 50.0, 10.0) / 100
+            uplift = st.slider("Expected Uplift (%)", 0.0, 50.0, 10.0) / 100
+            sample_size = st.slider("Sample Size (per variant)", 100, 10000, 1000)
+            
+            if st.button("Run Simulation"):
+                analyzer = ABTestAnalyzer()
+                sim_data = analyzer.simulate_test_data(n=sample_size, base_rate=base_rate, uplift=uplift)
+                
+                # Analyze results
+                control = sim_data[sim_data['group'] == 'Control']
+                variant = sim_data[sim_data['group'] == 'Variant']
+                
+                result = analyzer.analyze_conversion(
+                    conversions_a=control['converted'].sum(),
+                    total_a=len(control),
+                    conversions_b=variant['converted'].sum(),
+                    total_b=len(variant)
+                )
+                
+                st.markdown("---")
+                st.markdown("#### Results")
+                
+                res_col1, res_col2 = st.columns(2)
+                res_col1.metric("Control Conv. Rate", f"{control['converted'].mean():.2%}")
+                res_col2.metric("Variant Conv. Rate", f"{variant['converted'].mean():.2%}", 
+                              delta=f"{result.uplift:.1%} uplift")
+                
+                if result.is_significant:
+                    st.success(f"🎉 Result is Statistically Significant! Winner: **{result.winner}**")
+                    st.markdown(f"**Confidence Interval:** {result.confidence_interval[0]:.4f} to {result.confidence_interval[1]:.4f}")
+                else:
+                    st.warning("Result is NOT Statistically Significant.")
+                    st.markdown(f"**P-Value:** {result.p_value:.4f}")
+
+    with tab6:
+        st.markdown("### 🔮 Real-Time Conversion Prediction")
+        
+        predictor = load_predictive_model()
+        
+        if predictor:
+            col1, col2 = st.columns([1, 1])
+            
+            with col1:
+                st.markdown("#### 🎚️ Live Session Scorer")
+                st.info("Adjust the sliders to simulate a user session and predict conversion probability.")
+                
+                # Input controls
+                p_pv = st.slider("Page Views", 1, 30, 5)
+                p_sd = st.slider("Session Duration (seconds)", 10, 1800, 120)
+                p_br = st.slider("Bounce Rate (Likelihood)", 0.0, 1.0, 0.4)
+                p_vis = st.slider("Previous Visits", 0, 20, 1)
+                
+                input_data = {
+                    'page_views': p_pv,
+                    'session_duration': p_sd,
+                    'bounce_rate': p_br,
+                    'previous_visits': p_vis
+                }
+                
+            with col2:
+                st.markdown("#### 🎯 Prediction Result")
+                
+                # Get prediction
+                prob = predictor.predict(input_data)
+                
+                # Display gauge/metric
+                fig_gauge = go.Figure(go.Indicator(
+                    mode = "gauge+number",
+                    value = prob * 100,
+                    title = {'text': "Conversion Probability (%)"},
+                    gauge = {
+                        'axis': {'range': [0, 100]},
+                        'bar': {'color': "#00d4ff"},
+                        'steps': [
+                            {'range': [0, 30], 'color': "#e94560"},
+                            {'range': [30, 70], 'color': "gray"},
+                            {'range': [70, 100], 'color': "#4ade80"}
+                        ],
+                        'threshold': {
+                            'line': {'color': "white", 'width': 4},
+                            'thickness': 0.75,
+                            'value': prob * 100
+                        }
+                    }
+                ))
+                fig_gauge.update_layout(
+                    paper_bgcolor='rgba(0,0,0,0)',
+                    font=dict(color='white')
+                )
+                st.plotly_chart(fig_gauge, use_container_width=True, key='pred_gauge')
+                
+                # Text interpretation
+                if prob > 0.7:
+                    st.success("**High Probability**: This user is very likely to convert. Trigger proactive chat or expedited checkout.")
+                elif prob > 0.3:
+                    st.warning("**Medium Probability**: This user is interested. Offer a discount or free shipping to nudge them.")
+                else:
+                    st.error("**Low Probability**: This user is at risk. Try to capture email for remarketing.")
+
+            # Model Metrics
+            st.markdown("---")
+            st.markdown("#### 📊 Model Performance Evaluation")
+            metrics = predictor.metrics
+            
+            m_col1, m_col2 = st.columns(2)
+            m_col1.metric("Model Accuracy", f"{metrics.get('accuracy', 0):.2%}")
+            m_col2.metric("ROC AUC Score", f"{metrics.get('roc_auc', 0):.3f}")
+            
+        else:
+            st.warning("Predictive model not found. Please run the analysis engine to train the model.")
+
+    
+
     
     # Footer
     st.markdown("---")
     st.markdown("""
     <div style='text-align: center; color: #888; padding: 20px;'>
         <p>📊 Summit Analytics | Website Traffic Intelligence Dashboard</p>
-        <p style='font-size: 12px;'>Portfolio Project for Entry-Level Data Analyst Position</p>
     </div>
     """, unsafe_allow_html=True)
 
