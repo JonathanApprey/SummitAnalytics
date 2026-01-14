@@ -302,7 +302,7 @@ def render_header():
             <div>
                 <h1>📊 Summit Analytics</h1>
                 <p class='subtitle'>Website Traffic Intelligence Dashboard</p>
-                <span class='badge'>Entry-Level Data Analyst Portfolio Project</span>
+                <span class='badge'> Data Analyst Project</span>
             </div>
             <div style='text-align: right;'>
                 <div class='status-badge'>Live Data</div>
