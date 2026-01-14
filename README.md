@@ -13,7 +13,7 @@ A full-stack data analytics portfolio project demonstrating proficiency in Pytho
 
 ## 🎯 Project Overview
 
-Summit Analytics is a comprehensive website traffic analysis solution that transforms raw session data into actionable business insights. The project demonstrates key competencies for an Entry-Level Data Analyst role:
+Summit Analytics is a comprehensive website traffic analysis solution that transforms raw session data into actionable business insights. This project demonstrates:
 
 - ✅ **Data Management** - SQL schema design, ETL pipelines, data validation
 - ✅ **Statistical Analysis** - Descriptive statistics, EFM scoring, clustering
@@ -45,7 +45,7 @@ Summit Analytics is a comprehensive website traffic analysis solution that trans
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/summit-analytics.git
+git clone https://github.com/JonathanApprey/summit-analytics.git
 cd summit-analytics
 
 # Create virtual environment
@@ -151,14 +151,10 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-## 👤 Author
 
-**Portfolio Project** for Entry-Level Data Analyst role
-
----
 
 ## 🙏 Acknowledgments
 
-- Dataset structure inspired by real-world website analytics
-- Dashboard design influenced by modern BI tools
+- Dataset structure inspired by real-world website analytics from Kaggle
+- Dashboard design influenced by Streamlit tools
 - Analysis methodology based on industry best practices
